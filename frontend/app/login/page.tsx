@@ -23,7 +23,10 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!res.ok) throw new Error('Invalid credentials');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Invalid credentials');
+      }
 
       const data = await res.json();
       const isSecure = window.location.protocol === 'https:';
@@ -31,6 +34,7 @@ export default function LoginPage() {
         `token=${data.access_token}`,
         'path=/',
         'SameSite=Lax',
+        'max-age=86400',
         isSecure ? 'Secure' : '',
       ].filter(Boolean);
       document.cookie = cookieParts.join('; ');
@@ -67,7 +71,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold disabled:opacity-50"
+            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold disabled:opacity-50 disabled:hover:bg-purple-600 disabled:cursor-not-allowed"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

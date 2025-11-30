@@ -1,6 +1,5 @@
 """Project endpoints."""
 import asyncio
-from functools import partial
 from uuid import UUID
 from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File
@@ -68,8 +67,7 @@ async def upload_audio(
     await service.get_by_id(project_id, user.id)  # Verify access
     path = await save_upload(file, f"projects/{user.id}/{project_id}")
     # Run blocking audio duration calculation in thread pool
-    loop = asyncio.get_event_loop()
-    duration = await loop.run_in_executor(None, partial(get_audio_duration, path))
+    duration = await asyncio.to_thread(get_audio_duration, path)
     await service.update_status(project_id, ProjectStatus.UPLOADING, original_path=path, duration_seconds=duration)
     return {"message": "Uploaded", "path": path, "duration": duration}
 

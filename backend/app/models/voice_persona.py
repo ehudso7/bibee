@@ -1,7 +1,7 @@
 """Voice persona model."""
 import uuid
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import String, DateTime, Enum, ForeignKey, Text, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -25,7 +25,7 @@ class VoicePersona(Base):
     status: Mapped[PersonaStatus] = mapped_column(Enum(PersonaStatus), default=PersonaStatus.PENDING)
     sample_paths: Mapped[list] = mapped_column(ARRAY(String), default=[])
     model_path: Mapped[str] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="voice_personas")

@@ -79,3 +79,10 @@ def downgrade() -> None:
     op.drop_table("projects")
     op.drop_table("voice_personas")
     op.drop_table("users")
+    # Drop enum types
+    op.execute("DROP TYPE IF EXISTS taskstatus")
+    op.execute("DROP TYPE IF EXISTS tasktype")
+    op.execute("DROP TYPE IF EXISTS vocalmode")
+    op.execute("DROP TYPE IF EXISTS projectstatus")
+    op.execute("DROP TYPE IF EXISTS personastatus")
+    op.execute("DROP TYPE IF EXISTS userplan")
