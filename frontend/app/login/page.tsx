@@ -26,7 +26,14 @@ export default function LoginPage() {
       if (!res.ok) throw new Error('Invalid credentials');
 
       const data = await res.json();
-      document.cookie = `token=${data.access_token}; path=/`;
+      const isSecure = window.location.protocol === 'https:';
+      const cookieParts = [
+        `token=${data.access_token}`,
+        'path=/',
+        'SameSite=Lax',
+        isSecure ? 'Secure' : '',
+      ].filter(Boolean);
+      document.cookie = cookieParts.join('; ');
       router.push('/dashboard');
     } catch (err) {
       setError('Invalid email or password');

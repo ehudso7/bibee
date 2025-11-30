@@ -41,7 +41,7 @@ class Project(Base):
     vocals_path: Mapped[str] = mapped_column(String(500), nullable=True)
     output_path: Mapped[str] = mapped_column(String(500), nullable=True)
     duration_seconds: Mapped[float] = mapped_column(Float, nullable=True)
-    mix_settings: Mapped[dict] = mapped_column(JSONB, default={})
+    mix_settings: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

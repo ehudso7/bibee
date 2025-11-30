@@ -2,15 +2,28 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 export default function NewVoicePage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/voices');
+    setLoading(true);
+    setError('');
+
+    try {
+      await api.voices.create({ name, description: description || undefined });
+      router.push('/voices');
+    } catch (err) {
+      setError('Failed to create voice persona. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -18,6 +31,7 @@ export default function NewVoicePage() {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">New Voice Persona</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p className="text-red-500 text-center">{error}</p>}
           <input
             type="text"
             placeholder="Voice persona name"
@@ -34,9 +48,10 @@ export default function NewVoicePage() {
           />
           <button
             type="submit"
-            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold"
+            disabled={loading}
+            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold disabled:opacity-50"
           >
-            Create Voice Persona
+            {loading ? 'Creating...' : 'Create Voice Persona'}
           </button>
         </form>
       </div>

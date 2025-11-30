@@ -2,7 +2,7 @@
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from app.models.user import User
 from app.schemas.user import UserCreate, Token
 from app.utils.security import hash_password, verify_password, create_access_token, create_refresh_token

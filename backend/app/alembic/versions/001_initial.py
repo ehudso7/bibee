@@ -54,7 +54,7 @@ def upgrade() -> None:
         sa.Column("vocals_path", sa.String(500)),
         sa.Column("output_path", sa.String(500)),
         sa.Column("duration_seconds", sa.Float),
-        sa.Column("mix_settings", postgresql.JSONB, default={}),
+        sa.Column("mix_settings", postgresql.JSONB, server_default=sa.text("'{}'::jsonb")),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
     )
