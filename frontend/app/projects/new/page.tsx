@@ -49,7 +49,7 @@ export default function NewProjectPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold disabled:opacity-50"
+            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold disabled:opacity-50 disabled:hover:bg-purple-600 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating...' : 'Create Project'}
           </button>
