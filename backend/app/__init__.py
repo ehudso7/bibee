@@ -1,0 +1,1 @@
+"""Bibee backend application."""
