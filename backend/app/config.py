@@ -1,5 +1,6 @@
 """Application configuration."""
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from typing import List
 
 
@@ -14,6 +15,16 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 100
     debug: bool = False
     allowed_origins: str = "http://localhost:3000"
+
+    @model_validator(mode="after")
+    def validate_jwt_secret_in_production(self) -> "Settings":
+        """Ensure JWT secret is changed in production environments."""
+        if not self.debug and self.jwt_secret_key == "dev-secret-key-change-in-production":
+            raise ValueError(
+                "JWT_SECRET_KEY must be changed from default value in production. "
+                "Set a secure random value via environment variable."
+            )
+        return self
 
     @property
     def allowed_origins_list(self) -> List[str]:

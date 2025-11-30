@@ -24,11 +24,14 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
 
-      if (!res.ok) throw new Error('Registration failed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Registration failed');
+      }
 
       router.push('/login');
     } catch (err) {
-      setError('Registration failed. Email may already be in use.');
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -46,6 +49,7 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full p-3 bg-gray-900 rounded-lg border border-gray-800 focus:border-purple-500 outline-none"
+            required
           />
           <input
             type="email"
@@ -57,11 +61,13 @@ export default function RegisterPage() {
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Password (min. 8 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 bg-gray-900 rounded-lg border border-gray-800 focus:border-purple-500 outline-none"
             required
+            minLength={8}
+            title="Password must be at least 8 characters"
           />
           <button
             type="submit"

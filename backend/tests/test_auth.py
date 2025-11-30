@@ -16,11 +16,12 @@ async def test_register(client):
 
 @pytest.mark.asyncio
 async def test_login(client):
-    # First register
-    await client.post("/api/auth/register", json={
+    # First register and verify success
+    register_res = await client.post("/api/auth/register", json={
         "email": "login@example.com",
         "password": "testpass123"
     })
+    assert register_res.status_code == 200
 
     # Then login
     response = await client.post("/api/auth/login", json={

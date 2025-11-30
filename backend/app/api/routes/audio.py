@@ -13,12 +13,12 @@ router = APIRouter()
 @router.post("/{project_id}/process-stems")
 async def process_stems(
     project_id: UUID,
-    background_tasks: BackgroundTasks,
+    _background_tasks: BackgroundTasks,  # Reserved for future Celery integration
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = ProjectService(db)
-    project = await service.get_by_id(project_id, user.id)
+    await service.get_by_id(project_id, user.id)  # Verify access
     # In production, this would trigger a Celery task
     return {"message": "Stem separation started", "project_id": str(project_id)}
 
@@ -30,7 +30,7 @@ async def generate_vocals(
     db: AsyncSession = Depends(get_db),
 ):
     service = ProjectService(db)
-    project = await service.get_by_id(project_id, user.id)
+    await service.get_by_id(project_id, user.id)  # Verify access
     return {"message": "Vocal generation started", "project_id": str(project_id)}
 
 
@@ -41,5 +41,5 @@ async def mix_project(
     db: AsyncSession = Depends(get_db),
 ):
     service = ProjectService(db)
-    project = await service.get_by_id(project_id, user.id)
+    await service.get_by_id(project_id, user.id)  # Verify access
     return {"message": "Mixing started", "project_id": str(project_id)}
