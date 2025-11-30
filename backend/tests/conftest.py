@@ -1,7 +1,6 @@
 """Test fixtures."""
 import os
 import pytest
-import asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
@@ -10,19 +9,14 @@ os.environ["DEBUG"] = "true"
 
 from app.main import app
 from app.db import Base, get_db
+# Import models to ensure they are registered with Base.metadata
+from app.models import User, VoicePersona, Project, Task  # noqa: F401
 
 # Use PostgreSQL for tests since SQLite doesn't support PostgreSQL-specific types like ARRAY
 TEST_DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://test:test@localhost:5432/bibee_test"
 )
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture
