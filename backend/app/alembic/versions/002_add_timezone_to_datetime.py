@@ -1,13 +1,13 @@
 """Add timezone support to datetime columns
 
 Revision ID: a3b7c9d2e1f4
-Revises: 001
+Revises: 8f2e1a4b7c3d
 Create Date: 2024-01-15
 """
 from alembic import op
 
 revision = "a3b7c9d2e1f4"
-down_revision = "001"
+down_revision = "8f2e1a4b7c3d"
 branch_labels = None
 depends_on = None
 
