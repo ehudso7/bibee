@@ -11,7 +11,11 @@ os.environ["DEBUG"] = "true"
 from app.main import app
 from app.db import Base, get_db
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+# Use PostgreSQL for tests since SQLite doesn't support PostgreSQL-specific types like ARRAY
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://test:test@localhost:5432/bibee_test"
+)
 
 
 @pytest.fixture(scope="session")

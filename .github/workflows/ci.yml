@@ -37,7 +37,7 @@ jobs:
       - name: Run tests
         working-directory: backend
         env:
-          DATABASE_URL: sqlite+aiosqlite:///./test.db
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/bibee_test
           JWT_SECRET_KEY: test-secret
         run: pytest tests/ -v
 
