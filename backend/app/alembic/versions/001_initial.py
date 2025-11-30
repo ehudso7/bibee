@@ -23,8 +23,8 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255)),
         sa.Column("plan", sa.Enum("free", "pro", "admin", name="userplan"), default="free"),
         sa.Column("usage_seconds", sa.Integer, default=0),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -36,8 +36,8 @@ def upgrade() -> None:
         sa.Column("status", sa.Enum("pending", "training", "ready", "failed", name="personastatus"), default="pending"),
         sa.Column("sample_paths", postgresql.ARRAY(sa.String)),
         sa.Column("model_path", sa.String(500)),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -55,8 +55,8 @@ def upgrade() -> None:
         sa.Column("output_path", sa.String(500)),
         sa.Column("duration_seconds", sa.Float),
         sa.Column("mix_settings", postgresql.JSONB, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -69,8 +69,8 @@ def upgrade() -> None:
         sa.Column("progress", sa.Integer, default=0),
         sa.Column("error_message", sa.Text),
         sa.Column("celery_task_id", sa.String(255)),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
 

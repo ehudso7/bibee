@@ -11,7 +11,6 @@ from app.models.project import ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.services.project import ProjectService
 from app.utils.storage import save_upload
-from app.utils.audio import get_audio_duration
 
 router = APIRouter()
 
@@ -66,6 +65,8 @@ async def upload_audio(
     service = ProjectService(db)
     await service.get_by_id(project_id, user.id)  # Verify access
     path = await save_upload(file, f"projects/{user.id}/{project_id}")
+    # Lazy import to avoid loading heavy audio dependencies at startup
+    from app.utils.audio import get_audio_duration
     # Run blocking audio duration calculation in thread pool
     duration = await asyncio.to_thread(get_audio_duration, path)
     await service.update_status(project_id, ProjectStatus.UPLOADING, original_path=path, duration_seconds=duration)
