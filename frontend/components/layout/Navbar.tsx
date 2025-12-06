@@ -10,9 +10,17 @@ export function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      // Call backend logout endpoint to invalidate token
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      // Clear cookie and navigate regardless of API call result
+      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      router.push('/login');
+    }
   };
 
   const navLinks = [
@@ -55,6 +63,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center">
             <button
               onClick={handleLogout}
+              aria-label="Logout"
               className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
             >
               <LogOut className="w-4 h-4 mr-2" />
@@ -66,6 +75,7 @@ export function Navbar() {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -98,6 +108,7 @@ export function Navbar() {
             })}
             <button
               onClick={handleLogout}
+              aria-label="Logout"
               className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-800 hover:text-white"
             >
               <LogOut className="w-5 h-5 mr-3" />

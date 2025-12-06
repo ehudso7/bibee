@@ -32,7 +32,14 @@ def validate_audio_file(file: UploadFile) -> None:
             detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_AUDIO_EXTENSIONS)}",
         )
 
-    if file.content_type and file.content_type not in ALLOWED_AUDIO_MIMETYPES:
+    # Require Content-Type header to prevent bypass
+    if not file.content_type:
+        raise HTTPException(
+            status_code=400,
+            detail="Content-Type header is required",
+        )
+
+    if file.content_type not in ALLOWED_AUDIO_MIMETYPES:
         raise HTTPException(
             status_code=400,
             detail="Invalid audio file type",
@@ -56,7 +63,16 @@ async def save_upload(
     if validate_audio:
         validate_audio_file(file)
 
-    max_size = (max_size_mb or settings.max_upload_size_mb) * 1024 * 1024
+    effective_max_size_mb = max_size_mb or settings.max_upload_size_mb
+    max_size = effective_max_size_mb * 1024 * 1024
+
+    # Check Content-Length header first to prevent memory exhaustion
+    if file.size and file.size > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size: {effective_max_size_mb}MB",
+        )
+
     storage_path = Path(settings.storage_path) / subdir
     storage_path.mkdir(parents=True, exist_ok=True)
 
@@ -64,12 +80,12 @@ async def save_upload(
     filename = f"{uuid.uuid4()}{ext}"
     filepath = storage_path / filename
 
-    # Read and validate size
+    # Read and validate actual size (Content-Length can be spoofed)
     content = await file.read()
     if len(content) > max_size:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large. Maximum size: {settings.max_upload_size_mb}MB",
+            detail=f"File too large. Maximum size: {effective_max_size_mb}MB",
         )
 
     async with aiofiles.open(filepath, "wb") as f:
