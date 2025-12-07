@@ -57,8 +57,29 @@ async def test_login_invalid_credentials(client):
 
 @pytest.mark.asyncio
 async def test_logout(client):
-    """Test that logout endpoint returns success message."""
-    response = await client.post("/api/auth/logout")
+    """Test that logout endpoint returns success message when authenticated."""
+    # First register a user
+    register_res = await client.post("/api/auth/register", json={
+        "email": "logout@example.com",
+        "password": "LogoutPass123",
+        "name": "Logout User"
+    })
+    assert register_res.status_code == 200
+
+    # Login to get an access token
+    login_res = await client.post("/api/auth/login", json={
+        "email": "logout@example.com",
+        "password": "LogoutPass123"
+    })
+    assert login_res.status_code == 200
+    login_data = login_res.json()
+    access_token = login_data["access_token"]
+
+    # Use the token to logout
+    response = await client.post(
+        "/api/auth/logout",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
