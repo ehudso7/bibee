@@ -32,6 +32,11 @@ class RequestIDFilter(logging.Filter):
 
     def filter(self, record):
         record.request_id = request_id_var.get()
+    """Add request ID to log records."""
+
+    def filter(self, record):
+        if not hasattr(record, "request_id"):
+            record.request_id = "-"
         return True
 
 
@@ -89,6 +94,25 @@ async def request_id_middleware(request: Request, call_next):
     finally:
         # Reset context variable to prevent leakage
         request_id_var.reset(token)
+    """Add request ID to each request for tracing."""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    request.state.request_id = request_id
+
+    # Add to logging context
+    old_factory = logging.getLogRecordFactory()
+
+    def record_factory(*args, **kwargs):
+        record = old_factory(*args, **kwargs)
+        record.request_id = request_id
+        return record
+
+    logging.setLogRecordFactory(record_factory)
+
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+
+    logging.setLogRecordFactory(old_factory)
+    return response
 
 
 app.include_router(api_router, prefix="/api")
