@@ -1,12 +1,12 @@
 """Main FastAPI application."""
 import logging
 import uuid
+from contextvars import ContextVar
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.config import settings
@@ -14,6 +14,9 @@ from app.db import init_db, close_db
 from app.api import api_router
 from app.extensions import limiter
 from app.utils.token_blacklist import close_redis
+
+# Context variable for request ID - async-safe per-request storage
+request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 # Configure logging with request ID support
 logging.basicConfig(
@@ -24,11 +27,10 @@ logger = logging.getLogger(__name__)
 
 
 class RequestIDFilter(logging.Filter):
-    """Add request ID to log records."""
+    """Add request ID to log records using async-safe context variable."""
 
     def filter(self, record):
-        if not hasattr(record, "request_id"):
-            record.request_id = "-"
+        record.request_id = request_id_var.get()
         return True
 
 
@@ -69,25 +71,23 @@ app.add_middleware(
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
-    """Add request ID to each request for tracing."""
+    """Add request ID to each request for tracing.
+
+    Uses contextvars for async-safe per-request logging context,
+    preventing request ID leakage between concurrent requests.
+    """
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
     request.state.request_id = request_id
 
-    # Add to logging context
-    old_factory = logging.getLogRecordFactory()
-
-    def record_factory(*args, **kwargs):
-        record = old_factory(*args, **kwargs)
-        record.request_id = request_id
-        return record
-
-    logging.setLogRecordFactory(record_factory)
-
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-
-    logging.setLogRecordFactory(old_factory)
-    return response
+    # Set request ID in async-safe context variable
+    token = request_id_var.set(request_id)
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        # Reset context variable to prevent leakage
+        request_id_var.reset(token)
 
 
 app.include_router(api_router, prefix="/api")

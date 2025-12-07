@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 
@@ -72,7 +72,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProjects = async (page: number) => {
+  const fetchProjects = useCallback(async (page: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -93,11 +93,11 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.pageSize]);
 
   useEffect(() => {
     fetchProjects(1);
-  }, []);
+  }, [fetchProjects]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const isProduction = process.env.NODE_ENV === 'production';
 
     response.cookies.set('token', data.access_token, {
-      httpOnly: false, // Needed for client-side API calls
+      httpOnly: true, // HttpOnly for security - accessed via /api/proxy
       secure: isProduction,
       sameSite: 'lax',
       maxAge: 30 * 60, // 30 minutes
