@@ -31,6 +31,13 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_length(cls, v: str) -> str:
+        if len(v) > 72:
+            raise ValueError("Password must be at most 72 characters")
+        return v
+
 
 class UserResponse(BaseModel):
     id: UUID
