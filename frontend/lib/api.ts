@@ -3,26 +3,48 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export class ApiError extends Error {
   status: number;
   detail: string;
+  errorCode?: string;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, errorCode?: string) {
     super(detail);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.errorCode = errorCode;
   }
+}
+
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshToken(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function getToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  return document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('token='))
+    ?.split('=')
+    .slice(1)
+    .join('=') || null; // Handle tokens containing '='
 }
 
 export async function apiRequest<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryOnUnauth = true
 ): Promise<T> {
-  const token =
-    typeof document !== 'undefined'
-      ? document.cookie
-          .split('; ')
-          .find((row) => row.startsWith('token='))
-          ?.split('=')[1]
-      : null;
+  const token = getToken();
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -30,30 +52,54 @@ export async function apiRequest<T = unknown>(
     ...options.headers,
   };
 
-  const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 
-  if (!res.ok) {
-    // Handle 401 by clearing token and redirecting
-    if (res.status === 401) {
-      if (typeof document !== 'undefined') {
-        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
-      }
+  // Handle 401 with token refresh
+  if (res.status === 401 && retryOnUnauth) {
+    // Prevent multiple simultaneous refresh attempts
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshToken();
     }
 
+    const refreshed = await refreshPromise;
+    isRefreshing = false;
+    refreshPromise = null;
+
+    if (refreshed) {
+      // Retry the request with new token
+      return apiRequest<T>(endpoint, options, false);
+    }
+
+    // Refresh failed, redirect to login
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+      window.location.href = '/login';
+    }
+    throw new ApiError(401, 'Session expired. Please log in again.', 'SESSION_EXPIRED');
+  }
+
+  if (!res.ok) {
     // Try to parse error detail from response
     let detail = `API error: ${res.status}`;
+    let errorCode: string | undefined;
+
     try {
       const errorData = await res.json();
       if (errorData.detail) {
-        detail = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+        detail = typeof errorData.detail === 'string'
+          ? errorData.detail
+          : JSON.stringify(errorData.detail);
       }
+      errorCode = errorData.error_code;
     } catch {
       // Use default error message
     }
-    throw new ApiError(res.status, detail);
+
+    throw new ApiError(res.status, detail, errorCode);
   }
 
   // Handle empty responses (204 No Content, etc.)
@@ -65,17 +111,12 @@ export async function apiRequest<T = unknown>(
   return res.json();
 }
 
-interface Token {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-}
-
+// Type definitions
 interface UserResponse {
   id: string;
   email: string;
   name: string | null;
-  plan: string;
+  plan: 'free' | 'pro' | 'admin';
   usage_seconds: number;
   created_at: string;
 }
@@ -84,8 +125,8 @@ interface ProjectResponse {
   id: string;
   name: string;
   description: string | null;
-  status: string;
-  vocal_mode: string;
+  status: 'created' | 'uploading' | 'processing_stems' | 'stems_ready' | 'generating_vocals' | 'vocals_ready' | 'mixing' | 'completed' | 'failed';
+  vocal_mode: 'remove' | 'replace' | 'blend';
   duration_seconds: number | null;
   mix_settings: Record<string, unknown>;
   created_at: string;
@@ -100,19 +141,70 @@ interface ProjectListResponse {
   pages: number;
 }
 
+interface VoicePersonaResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  status: 'pending' | 'training' | 'ready' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
+interface VoicePersonaListResponse {
+  items: VoicePersonaResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+interface MessageResponse {
+  message: string;
+}
+
+interface HealthResponse {
+  status: string;
+  database: string;
+  redis: string;
+  version: string;
+}
+
 export const api = {
   auth: {
-    login: (email: string, password: string) =>
-      apiRequest<Token>('/api/auth/login', {
+    login: async (email: string, password: string) => {
+      // Use Next.js API route for secure cookie handling
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      }),
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new ApiError(res.status, errorData.detail || 'Login failed');
+      }
+
+      return res.json();
+    },
     register: (data: { email: string; password: string; name?: string }) =>
       apiRequest<UserResponse>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    logout: () => apiRequest<{ message: string }>('/api/auth/logout', { method: 'POST' }),
+    logout: async () => {
+      // Use Next.js API route for secure cookie handling
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      return { message: 'Successfully logged out' };
+    },
+    refresh: () =>
+      fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      }),
   },
   user: {
     me: () => apiRequest<UserResponse>('/api/users/me'),
@@ -132,20 +224,58 @@ export const api = {
         body: JSON.stringify(data),
       }),
     delete: (id: string) =>
-      apiRequest<{ message: string }>(`/api/projects/${id}`, { method: 'DELETE' }),
+      apiRequest<MessageResponse>(`/api/projects/${id}`, { method: 'DELETE' }),
+    upload: async (id: string, file: File) => {
+      const token = getToken();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`${API_URL}/api/projects/${id}/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new ApiError(res.status, errorData.detail || 'Upload failed');
+      }
+
+      return res.json();
+    },
   },
   voices: {
-    list: () =>
-      apiRequest<
-        Array<{
-          id: string;
-          name: string;
-          description: string | null;
-        }>
-      >('/api/voices'),
-    get: (id: string) => apiRequest(`/api/voices/${id}`),
+    list: (page = 1, pageSize = 20) =>
+      apiRequest<VoicePersonaListResponse>(`/api/voices?page=${page}&page_size=${pageSize}`),
+    get: (id: string) => apiRequest<VoicePersonaResponse>(`/api/voices/${id}`),
     create: (data: { name: string; description?: string }) =>
-      apiRequest('/api/voices', { method: 'POST', body: JSON.stringify(data) }),
-    delete: (id: string) => apiRequest(`/api/voices/${id}`, { method: 'DELETE' }),
+      apiRequest<VoicePersonaResponse>('/api/voices', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiRequest<MessageResponse>(`/api/voices/${id}`, { method: 'DELETE' }),
+    uploadSample: async (id: string, file: File) => {
+      const token = getToken();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`${API_URL}/api/voices/${id}/samples`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new ApiError(res.status, errorData.detail || 'Upload failed');
+      }
+
+      return res.json();
+    },
+  },
+  health: {
+    check: () => apiRequest<HealthResponse>('/api/health'),
+    detailed: () => apiRequest<HealthResponse & { database_latency_ms: number; redis_latency_ms: number }>('/api/health/detailed'),
   },
 };

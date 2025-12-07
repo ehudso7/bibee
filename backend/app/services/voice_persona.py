@@ -1,8 +1,8 @@
 """Voice persona service."""
 from uuid import UUID
-from typing import List
+from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from fastapi import HTTPException
 from app.models.voice_persona import VoicePersona, PersonaStatus
 from app.schemas.voice_persona import VoicePersonaCreate
@@ -28,9 +28,26 @@ class VoicePersonaService:
             raise HTTPException(status_code=404, detail="Voice persona not found")
         return persona
 
-    async def list_by_user(self, user_id: UUID) -> List[VoicePersona]:
-        result = await self.db.execute(select(VoicePersona).where(VoicePersona.user_id == user_id))
-        return list(result.scalars().all())
+    async def list_by_user(
+        self, user_id: UUID, page: int = 1, page_size: int = 20
+    ) -> Tuple[List[VoicePersona], int]:
+        """List voice personas with pagination."""
+        # Get total count
+        count_result = await self.db.execute(
+            select(func.count()).select_from(VoicePersona).where(VoicePersona.user_id == user_id)
+        )
+        total = count_result.scalar() or 0
+
+        # Get paginated results
+        offset = (page - 1) * page_size
+        result = await self.db.execute(
+            select(VoicePersona)
+            .where(VoicePersona.user_id == user_id)
+            .order_by(VoicePersona.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        return list(result.scalars().all()), total
 
     async def add_sample(self, persona_id: UUID, user_id: UUID, sample_path: str):
         persona = await self.get_by_id(persona_id, user_id)
