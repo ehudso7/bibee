@@ -1,14 +1,15 @@
 """Project endpoints."""
 import asyncio
+import math
 from uuid import UUID
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.project import ProjectStatus
-from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, ProjectListResponse
 from app.services.project import ProjectService
 from app.utils.storage import save_upload
 
@@ -25,13 +26,19 @@ async def create_project(
     return await service.create(user.id, data)
 
 
-@router.get("", response_model=List[ProjectResponse])
+@router.get("", response_model=ProjectListResponse)
 async def list_projects(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = ProjectService(db)
-    return await service.list_by_user(user.id)
+    items, total = await service.list_by_user(user.id, page, page_size)
+    pages = math.ceil(total / page_size) if total > 0 else 1
+    return ProjectListResponse(
+        items=items, total=total, page=page, page_size=page_size, pages=pages
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
