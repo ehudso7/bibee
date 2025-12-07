@@ -77,7 +77,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-center text-gray-400">
-          Don't have an account? <Link href="/register" className="text-purple-500 hover:underline">Sign up</Link>
+          Don&apos;t have an account? <Link href="/register" className="text-purple-500 hover:underline">Sign up</Link>
         </p>
       </div>
     </main>
