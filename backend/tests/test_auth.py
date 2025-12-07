@@ -53,3 +53,13 @@ async def test_login_invalid_credentials(client):
         "password": "WrongPass123"
     })
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_logout(client):
+    """Test that logout endpoint returns success message."""
+    response = await client.post("/api/auth/logout")
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert data["message"] == "Successfully logged out"
