@@ -1,24 +1,43 @@
 """Project schemas."""
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Generic, TypeVar
 from app.models.project import ProjectStatus, VocalMode
+
+T = TypeVar("T")
 
 
 class ProjectCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
     voice_persona_id: Optional[UUID] = None
     vocal_mode: VocalMode = VocalMode.REPLACE
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Project name cannot be empty")
+        return v
+
 
 class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
     voice_persona_id: Optional[UUID] = None
     vocal_mode: Optional[VocalMode] = None
     mix_settings: Optional[Dict[str, Any]] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Project name cannot be empty")
+        return v
 
 
 class ProjectResponse(BaseModel):
@@ -34,3 +53,19 @@ class ProjectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response."""
+
+    items: List[T]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class ProjectListResponse(PaginatedResponse[ProjectResponse]):
+    """Paginated project list response."""
+
+    pass
