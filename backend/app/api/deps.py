@@ -45,9 +45,11 @@ async def get_current_user(
             raise HTTPException(status_code=401, detail="Token has been revoked")
 
         # Check if all user tokens were invalidated (e.g., password change)
+        # Normalize iat to int for consistent comparison with Redis timestamp
         if iat:
+            iat_timestamp = int(iat) if isinstance(iat, (int, float)) else 0
             invalidation_time = await get_user_token_invalidation_time(user_id)
-            if invalidation_time and iat < invalidation_time:
+            if invalidation_time and iat_timestamp < invalidation_time:
                 raise HTTPException(status_code=401, detail="Token has been invalidated")
 
         auth_service = AuthService(db)
@@ -89,9 +91,11 @@ async def get_optional_user(
         if jti and await is_token_blacklisted(jti):
             return None
 
+        # Normalize iat to int for consistent comparison with Redis timestamp
         if iat:
+            iat_timestamp = int(iat) if isinstance(iat, (int, float)) else 0
             invalidation_time = await get_user_token_invalidation_time(user_id)
-            if invalidation_time and iat < invalidation_time:
+            if invalidation_time and iat_timestamp < invalidation_time:
                 return None
 
         auth_service = AuthService(db)

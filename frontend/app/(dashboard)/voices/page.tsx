@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 
@@ -9,7 +9,7 @@ interface VoicePersona {
   name: string;
   description: string | null;
   status: 'pending' | 'training' | 'ready' | 'failed';
-  sample_paths: string[];
+  sample_paths?: string[];  // Optional - not included in list responses
   created_at: string;
   updated_at: string;
 }
@@ -54,7 +54,7 @@ export default function VoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchVoices = async (page: number) => {
+  const fetchVoices = useCallback(async (page: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -75,11 +75,11 @@ export default function VoicesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.pageSize]);
 
   useEffect(() => {
     fetchVoices(1);
-  }, []);
+  }, [fetchVoices]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
