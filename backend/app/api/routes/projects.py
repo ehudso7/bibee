@@ -35,7 +35,7 @@ async def list_projects(
 ):
     service = ProjectService(db)
     items, total = await service.list_by_user(user.id, page, page_size)
-    pages = math.ceil(total / page_size) if total > 0 else 1
+    pages = math.ceil(total / page_size) if total > 0 else 0
     return ProjectListResponse(
         items=items, total=total, page=page, page_size=page_size, pages=pages
     )

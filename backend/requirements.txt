@@ -5,6 +5,7 @@ asyncpg==0.30.0
 alembic==1.14.0
 pydantic[email]==2.10.3
 pydantic-settings==2.6.1
+slowapi==0.1.9
 PyJWT[crypto]==2.10.1
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.18

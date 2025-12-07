@@ -6,6 +6,7 @@ from slowapi.util import get_remote_address
 from app.db import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.services.auth import AuthService
+from app.extensions import limiter
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)

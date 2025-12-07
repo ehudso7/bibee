@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=appuser:appgroup . .
 
-# Create uploads directory with proper permissions
-RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app/uploads
+# Create storage directory with proper permissions (matches config.py storage_path)
+RUN mkdir -p /app/storage && chown -R appuser:appgroup /app/storage
 
 USER appuser
 

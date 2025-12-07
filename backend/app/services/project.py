@@ -2,7 +2,6 @@
 import os
 import shutil
 import logging
-import math
 from uuid import UUID
 from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +9,7 @@ from sqlalchemy import select, func
 from fastapi import HTTPException
 from app.models.project import Project, ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +78,21 @@ class ProjectService:
                     setattr(project, key, value)
             await self.db.commit()
 
+    def _is_safe_path(self, path: str) -> bool:
+        """Check if path is within the allowed storage directory."""
+        if not path:
+            return False
+        try:
+            real_path = os.path.realpath(path)
+            storage_path = os.path.realpath(settings.storage_path)
+            return real_path.startswith(storage_path + os.sep)
+        except (ValueError, OSError):
+            return False
+
     async def delete(self, project_id: UUID, user_id: UUID):
         project = await self.get_by_id(project_id, user_id)
 
-        # Clean up associated files
+        # Clean up associated files with path traversal protection
         file_paths = [
             project.original_path,
             project.stems_path,
@@ -89,14 +100,14 @@ class ProjectService:
             project.output_path,
         ]
         for path in file_paths:
-            if path:
+            if path and self._is_safe_path(path):
                 try:
                     if os.path.isfile(path):
                         os.remove(path)
                     elif os.path.isdir(path):
                         shutil.rmtree(path)
                 except OSError as e:
-                    logger.warning(f"Failed to delete file {path}: {e}")
+                    logger.warning(f"Failed to delete file: {e}")
 
         await self.db.delete(project)
         await self.db.commit()
