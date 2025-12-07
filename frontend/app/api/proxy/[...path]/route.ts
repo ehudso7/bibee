@@ -22,16 +22,22 @@ async function proxyRequest(request: NextRequest, path: string): Promise<NextRes
   };
 
   // For requests with body, forward content-type and body
+  // Store body content for potential retry after token refresh
   let body: BodyInit | undefined;
+  let bodyForRetry: BodyInit | undefined;
   const contentType = request.headers.get('content-type');
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     if (contentType?.includes('application/json')) {
       headers['Content-Type'] = 'application/json';
-      body = await request.text();
+      const bodyText = await request.text();
+      body = bodyText;
+      bodyForRetry = bodyText;
     } else if (contentType?.includes('multipart/form-data')) {
-      // For file uploads, pass through the FormData
-      body = await request.arrayBuffer();
+      // For file uploads, clone the request to read body twice if needed
+      const bodyBuffer = await request.arrayBuffer();
+      body = bodyBuffer;
+      bodyForRetry = bodyBuffer.slice(0); // Clone for retry
       headers['Content-Type'] = contentType;
     }
   }
@@ -48,12 +54,13 @@ async function proxyRequest(request: NextRequest, path: string): Promise<NextRes
       // Try to refresh the token
       const refreshToken = request.cookies.get('refresh_token')?.value;
       if (refreshToken) {
+        // Send refresh token in body as expected by backend
         const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${refreshToken}`,
           },
+          body: JSON.stringify({ refresh_token: refreshToken }),
         });
 
         if (refreshRes.ok) {
@@ -66,7 +73,7 @@ async function proxyRequest(request: NextRequest, path: string): Promise<NextRes
               ...headers,
               Authorization: `Bearer ${refreshData.access_token}`,
             },
-            body,
+            body: bodyForRetry,
           });
 
           const retryData = await retryRes.text();

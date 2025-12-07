@@ -21,41 +21,14 @@ export class ApiError extends Error {
   }
 }
 
-let isRefreshing = false;
-let refreshPromise: Promise<boolean> | null = null;
-
-async function refreshToken(): Promise<boolean> {
-  try {
-    const res = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-function getToken(): string | null {
-  if (typeof document === 'undefined') return null;
-  return document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('token='))
-    ?.split('=')
-    .slice(1)
-    .join('=') || null; // Handle tokens containing '='
-}
-
 export async function apiRequest<T = unknown>(
   endpoint: string,
-  options: RequestInit = {},
-  retryOnUnauth = true
+  options: RequestInit = {}
 ): Promise<T> {
   // Route through proxy for secure token handling
   // Remove leading /api if present since proxy adds it
   const path = endpoint.startsWith('/api/') ? endpoint.slice(5) : endpoint.replace(/^\//, '');
   const proxyUrl = `/api/proxy/${path}`;
-  const token = getToken();
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -63,7 +36,6 @@ export async function apiRequest<T = unknown>(
   };
 
   const res = await fetch(proxyUrl, {
-  const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include',
@@ -71,28 +43,6 @@ export async function apiRequest<T = unknown>(
 
   // Handle 401 - proxy handles refresh, but if it still fails, redirect
   if (res.status === 401) {
-    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-      window.location.href = '/login';
-  // Handle 401 with token refresh
-  if (res.status === 401 && retryOnUnauth) {
-    // Prevent multiple simultaneous refresh attempts
-    if (!isRefreshing) {
-      isRefreshing = true;
-      refreshPromise = refreshToken();
-    }
-    throw new ApiError(401, 'Session expired. Please log in again.', 'SESSION_EXPIRED');
-  }
-
-    const refreshed = await refreshPromise;
-    isRefreshing = false;
-    refreshPromise = null;
-
-    if (refreshed) {
-      // Retry the request with new token
-      return apiRequest<T>(endpoint, options, false);
-    }
-
-    // Refresh failed, redirect to login
     if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
       window.location.href = '/login';
     }
@@ -251,14 +201,6 @@ export const api = {
         method: 'POST',
         body: formData,
         credentials: 'include',
-      const token = getToken();
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch(`${API_URL}/api/projects/${id}/upload`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
       });
 
       if (!res.ok) {
@@ -289,14 +231,6 @@ export const api = {
         method: 'POST',
         body: formData,
         credentials: 'include',
-      const token = getToken();
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch(`${API_URL}/api/voices/${id}/samples`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
       });
 
       if (!res.ok) {

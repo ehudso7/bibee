@@ -50,9 +50,6 @@ async def get_current_user(
             iat_timestamp = int(iat) if isinstance(iat, (int, float)) else 0
             invalidation_time = await get_user_token_invalidation_time(user_id)
             if invalidation_time and iat_timestamp < invalidation_time:
-        if iat:
-            invalidation_time = await get_user_token_invalidation_time(user_id)
-            if invalidation_time and iat < invalidation_time:
                 raise HTTPException(status_code=401, detail="Token has been invalidated")
 
         auth_service = AuthService(db)
@@ -99,9 +96,6 @@ async def get_optional_user(
             iat_timestamp = int(iat) if isinstance(iat, (int, float)) else 0
             invalidation_time = await get_user_token_invalidation_time(user_id)
             if invalidation_time and iat_timestamp < invalidation_time:
-        if iat:
-            invalidation_time = await get_user_token_invalidation_time(user_id)
-            if invalidation_time and iat < invalidation_time:
                 return None
 
         auth_service = AuthService(db)
