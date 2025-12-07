@@ -18,6 +18,16 @@ class VoicePersonaResponse(BaseModel):
     status: PersonaStatus
     sample_paths: List[str]
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class VoicePersonaListResponse(BaseModel):
+    """Paginated list of voice personas."""
+    items: List[VoicePersonaResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
